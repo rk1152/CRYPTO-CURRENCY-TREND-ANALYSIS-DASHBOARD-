@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Crypto Trend Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface2: #f1efe8;
+    --border: rgba(0,0,0,0.10);
+    --border-md: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text-2: #5f5e5a;
+    --text-3: #888780;
+    --gold: #e89c2f;
+    --purple: #7F77DD;
+    --teal: #1D9E75;
+    --red: #E24B4A;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e0e0c;
+      --surface: #1a1a18;
+      --surface2: #242420;
+      --border: rgba(255,255,255,0.10);
+      --border-md: rgba(255,255,255,0.18);
+      --text: #f0ede8;
+      --text-2: #a8a59e;
+      --text-3: #6b6965;
+    }
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+
+  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 1.75rem; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 40px; height: 40px; background: var(--gold); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; }
+  .logo-icon svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .logo-text h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  .logo-text p { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+  .live-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); background: var(--surface2); border: 0.5px solid var(--border); border-radius: 20px; padding: 5px 12px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .controls-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .ctrl { display: flex; flex-direction: column; gap: 5px; }
+  .ctrl label { font-size: 11px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+  .ctrl select { height: 38px; padding: 0 32px 0 12px; font-size: 13px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); background: var(--surface); color: var(--text); cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888780' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .15s; }
+  .ctrl select:focus { outline: none; border-color: var(--gold); }
+  .ctrl select:hover { border-color: var(--border-md); }
+
+  .note-bar { display: flex; gap: 10px; margin-bottom: 1rem; align-items: flex-end; }
+  .note-bar .ctrl { flex: 1; }
+  .note-bar input { height: 38px; width: 100%; padding: 0 12px; font-size: 13px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); background: var(--surface); color: var(--text); outline: none; transition: border-color .15s; }
+  .note-bar input:focus { border-color: var(--gold); }
+  .note-bar input::placeholder { color: var(--text-3); }
+  .pin-btn { height: 38px; padding: 0 18px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); background: var(--surface); color: var(--text); cursor: pointer; white-space: nowrap; transition: background .15s; display: flex; align-items: center; gap: 7px; }
+  .pin-btn:hover { background: var(--surface2); }
+  .pin-btn svg { width: 15px; height: 15px; stroke: var(--gold); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .note-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; min-height: 0; }
+  .note-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 0.5px solid var(--border-md); border-radius: 20px; padding: 4px 10px 4px 8px; font-size: 12px; color: var(--text-2); }
+  .note-tag span.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+  .note-tag span.period { font-size: 11px; color: var(--text-3); }
+  .note-tag button { background: none; border: none; cursor: pointer; padding: 0; color: var(--text-3); font-size: 16px; line-height: 1; display: flex; align-items: center; }
+  .note-tag button:hover { color: var(--text); }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+  .kpi { background: var(--surface2); border-radius: var(--radius-md); padding: 14px 16px; border-left: 3px solid var(--gold); }
+  .kpi.eth { border-left-color: var(--purple); }
+  .kpi.doge { border-left-color: var(--teal); }
+  .kpi.hi { border-left-color: var(--red); }
+  .kpi-lbl { font-size: 11px; color: var(--text-3); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-val { font-size: 20px; font-weight: 600; color: var(--text); }
+  .kpi-chg { font-size: 11px; margin-top: 4px; }
+  .pos { color: #1D9E75; } .neg { color: #E24B4A; } .muted { color: var(--text-3); }
+
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .card-ttl { font-size: 14px; font-weight: 500; color: var(--text); }
+  .card-sub { font-size: 11px; color: var(--text-3); }
+
+  .charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .charts-2col { grid-template-columns: 1fr; } }
+
+  .legend-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+  .leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  footer { margin-top: 2.5rem; padding-top: 1.25rem; border-top: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  footer p { font-size: 11px; color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top-bar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M9 8h6M9 12h6M9 16h4"/><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M15 3v4M9 3v4"/></svg>
+      </div>
+      <div class="logo-text">
+        <h1>Crypto Trend Dashboard</h1>
+        <p id="dsub">BTC · ETH · DOGE &nbsp;·&nbsp; Loading…</p>
+      </div>
+    </div>
+    <div class="live-badge"><span class="live-dot"></span> Simulated · Jun 2026</div>
+  </div>
+
+  <div class="controls-bar">
+    <div class="ctrl">
+      <label for="sel-period">Time period</label>
+      <select id="sel-period">
+        <option value="7D">Last 7 days</option>
+        <option value="30D" selected>Last 30 days</option>
+        <option value="90D">Last 90 days</option>
+        <option value="1Y">Last 1 year</option>
+        <option value="5Y">Last 5 years</option>
+        <option value="10Y">Last 10 years</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label for="sel-coin">Coin</label>
+      <select id="sel-coin">
+        <option value="ALL" selected>All coins</option>
+        <option value="BTC">BTC only</option>
+        <option value="ETH">ETH only</option>
+        <option value="DOGE">DOGE only</option>
+        <option value="BTC,ETH">BTC + ETH</option>
+        <option value="BTC,DOGE">BTC + DOGE</option>
+        <option value="ETH,DOGE">ETH + DOGE</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label for="sel-chart">Chart type</label>
+      <select id="sel-chart">
+        <option value="line" selected>Line chart</option>
+        <option value="bar">Bar chart</option>
+        <option value="area">Area chart</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="note-bar">
+    <div class="ctrl" style="flex:1">
+      <label for="note-in">Annotation</label>
+      <input type="text" id="note-in" placeholder="e.g. BTC halving, market crash, ETF approval…" />
+    </div>
+    <button class="pin-btn" id="note-btn">
+      <svg viewBox="0 0 24 24"><path d="M12 2l2.5 6.5H21l-5.5 4 2 6.5L12 15l-5.5 4 2-6.5L3 8.5h6.5z"/></svg>
+      Pin note
+    </button>
+  </div>
+
+  <div class="note-tags" id="note-tags"></div>
+
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-ttl" id="main-ttl">Price trend (normalized)</span>
+      <span class="card-sub" id="main-rng"></span>
+    </div>
+    <div style="position:relative;width:100%;height:280px">
+      <canvas id="cMain" role="img" aria-label="Normalized price trend chart">Price trend data.</canvas>
+    </div>
+    <div class="legend-row" id="main-leg"></div>
+  </div>
+
+  <div class="charts-2col">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-ttl">Volume (cumulative)</span>
+      </div>
+      <div style="position:relative;width:100%;height:200px">
+        <canvas id="cVol" role="img" aria-label="Trading volume chart">Volume data.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-ttl">Avg price share</span>
+      </div>
+      <div style="position:relative;width:100%;height:200px">
+        <canvas id="cPie" role="img" aria-label="Price share doughnut chart">Price share data.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Data is simulated for demonstration purposes · BTC-USD · ETH-USD · DOGE-USD</p>
+    <p>Crypto Trend Dashboard · Jun 2026</p>
+  </footer>
+
+</div>
+
+<script>
+const PCFG={
+  '7D':{days:7,step:1,fmt:'short',label:'7 days'},
+  '30D':{days:30,step:5,fmt:'short',label:'30 days'},
+  '90D':{days:90,step:15,fmt:'short',label:'3 months'},
+  '1Y':{days:365,step:60,fmt:'mon',label:'1 year'},
+  '5Y':{days:1825,step:365,fmt:'yr',label:'5 years'},
+  '10Y':{days:3650,step:730,fmt:'yr',label:'10 years'}
+};
+const BASES={
+  '7D':{BTC:89000,ETH:3580,DOGE:0.361},
+  '30D':{BTC:81000,ETH:3145,DOGE:0.304},
+  '90D':{BTC:67000,ETH:2516,DOGE:0.228},
+  '1Y':{BTC:51150,ETH:1850,DOGE:0.171},
+  '5Y':{BTC:20000,ETH:600,DOGE:0.05},
+  '10Y':{BTC:580,ETH:12,DOGE:0.00025}
+};
+const VOLS={'7D':0.018,'30D':0.020,'90D':0.022,'1Y':0.025,'5Y':0.030,'10Y':0.032};
+const CC={BTC:'#e89c2f',ETH:'#7F77DD',DOGE:'#1D9E75'};
+
+function lcg(s){let x=s;return()=>{x=(x*1664525+1013904223)&0xffffffff;return(x>>>0)/0xffffffff;};}
+function gen(seed,base,vol,n){const r=lcg(seed),a=[base];for(let i=1;i<n;i++)a.push(a[i-1]*(1+(r()-.498)*vol*2.2));return a;}
+function norm(a){const mn=Math.min(...a),mx=Math.max(...a);return mx===mn?a.map(()=>50):a.map(v=>((v-mn)/(mx-mn))*100);}
+function fp(v){return v>=1000?'$'+Math.round(v).toLocaleString():v>=1?'$'+v.toFixed(2):'$'+v.toFixed(5);}
+function fchg(v){return(v>=0?'+':'')+v.toFixed(1)+'%';}
+
+let charts={main:null,vol:null,pie:null};
+
+function buildData(p){
+  const cfg=PCFG[p],N=cfg.days,bs=BASES[p],vol=VOLS[p];
+  const off={'7D':0,'30D':100,'90D':200,'1Y':300,'5Y':400,'10Y':500}[p];
+  const prices={};
+  ['BTC','ETH','DOGE'].forEach(c=>{prices[c]=gen({BTC:12,ETH:55,DOGE:88}[c]+off,bs[c],vol,N);});
+  const today=new Date(2026,5,3),labels=[];
+  for(let i=0;i<N;i++){
+    const d=new Date(today);d.setDate(today.getDate()-(N-1-i));
+    labels.push(cfg.fmt==='yr'?d.getFullYear().toString():cfg.fmt==='mon'?d.toLocaleString('en',{month:'short',year:'2-digit'}):d.toLocaleString('en',{month:'short',day:'numeric'}));
+  }
+  const tickIdx=[];for(let i=0;i<N;i+=cfg.step)tickIdx.push(i);
+  return{prices,labels,tickIdx,N,cfg};
+}
+
+function getCoins(){
+  const v=document.getElementById('sel-coin').value;
+  return v==='ALL'?['BTC','ETH','DOGE']:v.split(',');
+}
+
+function render(){
+  const p=document.getElementById('sel-period').value;
+  const ct=document.getElementById('sel-chart').value;
+  const coins=getCoins();
+  const{prices,labels,tickIdx,N,cfg}=buildData(p);
+
+  document.getElementById('dsub').textContent=`BTC · ETH · DOGE  ·  ${labels[0]} – ${labels[N-1]}`;
+
+  const kg=document.getElementById('kpi-grid');kg.innerHTML='';
+  [{c:'BTC',cls:'btc'},{c:'ETH',cls:'eth'},{c:'DOGE',cls:'doge'},{c:'BTC',cls:'hi',hi:true}].forEach(inf=>{
+    const arr=prices[inf.c],pct=(arr[arr.length-1]/arr[0]-1)*100;
+    const el=document.createElement('div');
+    el.className='kpi '+(inf.cls==='btc'?'':inf.cls);
+    el.innerHTML=inf.hi
+      ?`<div class="kpi-lbl">BTC high / low</div><div class="kpi-val">${fp(Math.max(...arr))}</div><div class="kpi-chg muted">Low ${fp(Math.min(...arr))}</div>`
+      :`<div class="kpi-lbl">${inf.c}-USD</div><div class="kpi-val">${fp(arr[arr.length-1])}</div><div class="kpi-chg ${pct>=0?'pos':'neg'}">${fchg(pct)} · ${cfg.label}</div>`;
+    kg.appendChild(el);
+  });
+
+  const tickLbls=labels.map((l,i)=>tickIdx.includes(i)?l:'');
+  const datasets=coins.map(c=>({
+    label:c,data:norm(prices[c]).map(v=>parseFloat(v.toFixed(1))),
+    borderColor:CC[c],backgroundColor:CC[c]+'33',
+    borderWidth:2,pointRadius:N<=30?3:1,tension:0.35,fill:ct==='area'
+  }));
+  if(charts.main){charts.main.destroy();charts.main=null;}
+  charts.main=new Chart(document.getElementById('cMain'),{
+    type:ct==='bar'?'bar':'line',data:{labels:tickLbls,datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`}}},
+      scales:{
+        x:{grid:{color:'rgba(128,128,128,.08)'},ticks:{color:'#888780',font:{size:10},maxRotation:35,autoSkip:false}},
+        y:{grid:{color:'rgba(128,128,128,.08)'},ticks:{color:'#888780',font:{size:10},callback:v=>v.toFixed(0)+'%'}}
+      }}
+  });
+  document.getElementById('main-rng').textContent=labels[0]+' – '+labels[N-1];
+  document.getElementById('main-leg').innerHTML=coins.map(c=>`<span class="leg"><span class="leg-sq" style="background:${CC[c]}"></span>${c}&nbsp;(${fp(prices[c][0])} → ${fp(prices[c][N-1])})</span>`).join('');
+
+  const scale=N/30,vols={BTC:3.1e10*scale,ETH:1.3e10*scale,DOGE:2.6e9*scale};
+  if(charts.vol){charts.vol.destroy();charts.vol=null;}
+  charts.vol=new Chart(document.getElementById('cVol'),{
+    type:'bar',
+    data:{labels:coins.map(c=>c+'-USD'),datasets:[{data:coins.map(c=>parseFloat((vols[c]/1e9).toFixed(1))),backgroundColor:coins.map(c=>CC[c]+'55'),borderColor:coins.map(c=>CC[c]),borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y.toFixed(1)+'B USD'}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#888780',font:{size:11}}},y:{grid:{color:'rgba(128,128,128,.08)'},ticks:{color:'#888780',font:{size:10},callback:v=>v+'B'}}}}
+  });
+
+  const avgs=coins.map(c=>prices[c].reduce((a,b)=>a+b,0)/prices[c].length);
+  if(charts.pie){charts.pie.destroy();charts.pie=null;}
+  charts.pie=new Chart(document.getElementById('cPie'),{
+    type:'doughnut',
+    data:{labels:coins,datasets:[{data:avgs.map(v=>parseFloat(v.toFixed(4))),backgroundColor:coins.map(c=>CC[c]+'AA'),borderColor:coins.map(c=>CC[c]),borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fp(ctx.parsed)}`}}}}
+  });
+}
+
+['sel-period','sel-coin','sel-chart'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+
+document.getElementById('note-btn').addEventListener('click',()=>{
+  const val=document.getElementById('note-in').value.trim();if(!val)return;
+  const sel=document.getElementById('sel-period');
+  const period=sel.options[sel.selectedIndex].text;
+  const tag=document.createElement('div');tag.className='note-tag';
+  tag.innerHTML=`<span class="dot"></span><span>${val}</span><span class="period">${period}</span><button onclick="this.parentElement.remove()" aria-label="Remove">×</button>`;
+  document.getElementById('note-tags').appendChild(tag);
+  document.getElementById('note-in').value='';
+});
+
+render();
+</script>
+</body>
+</html>
